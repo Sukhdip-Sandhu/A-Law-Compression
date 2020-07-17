@@ -10,7 +10,7 @@
 #define BITS_PER_SAMPLE 8
 #define MULAW_MAX 0x1FFF
 #define MULAW_BIAS 33
-
+#define ALAW_MAX 0xFFF
 
 // **********************************************************************
 // FUNCTION DECLARATIONS
@@ -18,6 +18,7 @@
 int16_t bytes_to_int16(unsigned char *buffer);
 
 int8_t u_law_encode(int16_t number);
+int8_t a_law_encode(int16_t number);
 
 char codeword_compression(unsigned int sample_magnitude, int sign);
 
@@ -199,7 +200,7 @@ int main(int argc, char **argv) {
 
     while (fread(byte_buffer_2, 1, 2, inputfile) == 2) {
         input_data = bytes_to_int16(byte_buffer_2);
-        codeword = u_law_encode(input_data);
+        codeword = a_law_encode(input_data);
         fwrite(&codeword, 1, 1, outputfile);
     }
 
@@ -236,6 +237,24 @@ int8_t u_law_encode(int16_t number) {
     return (~(sign | ((position - 5) << 4) | lsb));
 }
 
+int8_t a_law_encode(int16_t number){
+   uint16_t mask = 0x800;
+   uint8_t sign = 0;
+   uint8_t position = 11;
+   uint8_t lsb = 0;
+   if (number < 0)
+   {
+      number = -number;
+      sign = 0x80;
+   }
+   if (number > ALAW_MAX)
+   {
+      number = ALAW_MAX;
+   }
+   for (; ((number & mask) != mask && position >= 5); mask >>= 1, position--);
+   lsb = (number >> ((position == 4) ? (1) : (position - 4))) & 0x0f;
+   return (sign | ((position - 4) << 4) | lsb) ^ 0x55;
+}
 
 /*
 char codeword_compression(unsigned int sample_magnitude,
