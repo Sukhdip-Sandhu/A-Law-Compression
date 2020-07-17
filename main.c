@@ -8,8 +8,6 @@
 // DEFINE STATEMENTS
 // **********************************************************************
 #define BITS_PER_SAMPLE 8
-#define MULAW_MAX 0x1FFF
-#define MULAW_BIAS 33
 #define ALAW_MAX 0xFFF
 
 // **********************************************************************
@@ -17,7 +15,6 @@
 // **********************************************************************
 int16_t bytes_to_int16(unsigned char *buffer);
 
-int8_t u_law_encode(int16_t number);
 int8_t a_law_encode(int16_t number);
 
 char codeword_compression(unsigned int sample_magnitude, int sign);
@@ -136,7 +133,7 @@ int main(int argc, char **argv) {
 
     // Audio Format Type: 1=PCM; 6=ALAW; 7=MuLaw
     fread(wavHeaderStruct.format_type, sizeof(wavHeaderStruct.format_type), 1, inputfile);
-    byte_buffer_2[0] = 7;
+    byte_buffer_2[0] = 6;
     byte_buffer_2[1] = '\0';
     fwrite(&byte_buffer_2[0], 1, 1, outputfile);
     fwrite(&byte_buffer_2[1], 1, 1, outputfile);
@@ -219,41 +216,21 @@ int16_t bytes_to_int16(unsigned char *buffer) {
     return number;
 }
 
-int8_t u_law_encode(int16_t number) {
-    uint16_t mask = 0x1000;
+int8_t a_law_encode(int16_t number) {
+    uint16_t mask = 0x800;
     uint8_t sign = 0;
-    uint8_t position = 12;
+    uint8_t position = 11;
     uint8_t lsb = 0;
     if (number < 0) {
         number = -number;
         sign = 0x80;
     }
-    number += MULAW_BIAS;
-    if (number > MULAW_MAX) {
-        number = MULAW_MAX;
+    if (number > ALAW_MAX) {
+        number = ALAW_MAX;
     }
     for (; ((number & mask) != mask && position >= 5); mask >>= 1, position--);
-    lsb = (number >> (position - 4)) & 0x0f;
-    return (~(sign | ((position - 5) << 4) | lsb));
-}
-
-int8_t a_law_encode(int16_t number){
-   uint16_t mask = 0x800;
-   uint8_t sign = 0;
-   uint8_t position = 11;
-   uint8_t lsb = 0;
-   if (number < 0)
-   {
-      number = -number;
-      sign = 0x80;
-   }
-   if (number > ALAW_MAX)
-   {
-      number = ALAW_MAX;
-   }
-   for (; ((number & mask) != mask && position >= 5); mask >>= 1, position--);
-   lsb = (number >> ((position == 4) ? (1) : (position - 4))) & 0x0f;
-   return (sign | ((position - 4) << 4) | lsb) ^ 0x55;
+    lsb = (number >> ((position == 4) ? (1) : (position - 4))) & 0x0f;
+    return (sign | ((position - 4) << 4) | lsb) ^ 0x55;
 }
 
 /*
