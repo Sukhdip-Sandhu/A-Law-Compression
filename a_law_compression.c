@@ -76,8 +76,9 @@ int16_t bytes_to_int16(const unsigned char *buffer) {
 int8_t a_law_encode(int16_t number) {
     uint16_t mask = 0x800;
     uint8_t sign = 0;
-    uint8_t position = 11;
-    uint8_t lsb = 0;
+    uint8_t step = 0;
+    uint8_t msb_position;
+    uint8_t chord;
 
     if (number < 0) {
         number = -number;
@@ -88,7 +89,21 @@ int8_t a_law_encode(int16_t number) {
         number = ALAW_MAX;
     }
 
-    for (; ((number & mask) != mask && position >= 5); mask >>= 1, position--);
-    lsb = (number >> ((position == 4) ? (1) : (position - 4))) & 0x0f;
-    return (sign | ((position - 4) << 4) | lsb) ^ 0x55;
+    for (msb_position = 11; msb_position >= 5; msb_position--) {
+        if ((number & mask)) {
+            break;
+        } else {
+            mask >>= 1;
+        }
+    }
+
+    if (msb_position == 4) {
+        step = (number >> 1) & 0x0F;
+    } else {
+        step = (number >> (msb_position - 4)) & 0x0F;
+    }
+
+    chord = ((msb_position - 4) << 4);
+
+    return (sign | chord | step) ^ 0x55;
 }
