@@ -12,7 +12,7 @@
 // **********************************************************************
 // FUNCTION DECLARATIONS
 // **********************************************************************
-int16_t bytes_to_int16(unsigned char *buffer);
+int16_t bytes_to_int16(const unsigned char *buffer);
 
 int8_t a_law_encode(int16_t number);
 
@@ -31,23 +31,14 @@ int main(int argc, char **argv) {
     char current_directory[1024];
     unsigned char byte_buffer_2[2];
     unsigned char byte_buffer_44[44];
-    int input_data;
+    int16_t input_data;
     int8_t codeword;
 
     input_file_name = (char *) malloc(sizeof(char) * 1024);
     output_file_name = (char *) malloc(sizeof(char) * 1024);
 
-    if (input_file_name == NULL) {
-        printf("Error in malloc\n");
-        exit(1);
-    }
-
     if (getcwd(current_directory, sizeof(current_directory)) != NULL) {
         strcpy(input_file_name, current_directory);
-        if (argc < 2) {
-            printf("No input file specified!\n");
-            exit(1);
-        }
         strcat(input_file_name, "/");
         strcat(input_file_name, argv[1]);
     }
@@ -57,16 +48,7 @@ int main(int argc, char **argv) {
     strcat(output_file_name, "_tmp.wav");
 
     inputfile = fopen(input_file_name, "rb+");
-    if (inputfile == NULL) {
-        printf("Error opening input file!\n");
-        exit(1);
-    }
-
     outputfile = fopen(output_file_name, "wb");
-    if (outputfile == NULL) {
-        printf("Error writing output file!\n");
-        exit(1);
-    }
 
     fread(byte_buffer_44, 44, 1, inputfile);
     fwrite(byte_buffer_44, 44, 1, outputfile);
@@ -85,11 +67,10 @@ int main(int argc, char **argv) {
 }
 
 // HELPER FUNCTIONS
-int16_t bytes_to_int16(unsigned char *buffer) {
+int16_t bytes_to_int16(const unsigned char *buffer) {
     unsigned char bit_one = buffer[0];
     unsigned char bit_two = buffer[1];
-    int16_t number = ((int) bit_two << 8) | (int) bit_one;
-    return number;
+    return bit_two << 8 | bit_one;
 }
 
 int8_t a_law_encode(int16_t number) {
@@ -97,13 +78,16 @@ int8_t a_law_encode(int16_t number) {
     uint8_t sign = 0;
     uint8_t position = 11;
     uint8_t lsb = 0;
+
     if (number < 0) {
         number = -number;
         sign = 0x80;
     }
+
     if (number > ALAW_MAX) {
         number = ALAW_MAX;
     }
+
     for (; ((number & mask) != mask && position >= 5); mask >>= 1, position--);
     lsb = (number >> ((position == 4) ? (1) : (position - 4))) & 0x0f;
     return (sign | ((position - 4) << 4) | lsb) ^ 0x55;
