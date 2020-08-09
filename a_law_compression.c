@@ -78,6 +78,7 @@ int8_t a_law_encode(int16_t number) {
     uint8_t sign = 0;
     uint8_t step = 0;
     uint8_t msb_position;
+    uint8_t chord;
 
     if (number < 0) {
         number = -number;
@@ -89,16 +90,20 @@ int8_t a_law_encode(int16_t number) {
     }
 
     for (msb_position = 11; msb_position >= 5; msb_position--) {
-        if ((number & mask) == mask) {
+        if ((number & mask)) {
             break;
         } else {
             mask >>= 1;
         }
     }
+
     if (msb_position == 4) {
         step = (number >> 1) & 0x0F;
     } else {
         step = (number >> (msb_position - 4)) & 0x0F;
     }
-    return (sign | ((msb_position - 4) << 4) | step) ^ 0x55;
+
+    chord = ((msb_position - 4) << 4);
+
+    return (sign | chord | step) ^ 0x55;
 }
