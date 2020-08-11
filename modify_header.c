@@ -8,18 +8,10 @@
 // DEFINE STATEMENTS
 // **********************************************************************
 #define BITS_PER_SAMPLE 8
-#define MULAW_MAX 0x1FFF
-#define MULAW_BIAS 33
-
 
 // **********************************************************************
 // FUNCTION DECLARATIONS
 // **********************************************************************
-int16_t bytes_to_int16(unsigned char *buffer);
-
-int8_t u_law_encode(int16_t number);
-
-char codeword_compression(unsigned int sample_magnitude, int sign);
 
 // **********************************************************************
 // STRUCT
@@ -44,8 +36,10 @@ struct wav_header_struct {
 // GLOBAL VARIABLES
 // **********************************************************************
 FILE *inputfile;
+FILE *inputDataFile;
 FILE *outputfile;
-char *input_file_name;
+char *original_audio_file;
+char *a_law_compressed_file;
 char *output_file_name;
 
 struct wav_header_struct wavHeaderStruct;
@@ -57,33 +51,42 @@ int main(int argc, char **argv) {
     char current_directory[1024];
     unsigned char byte_buffer_2[2];
     unsigned char byte_buffer_4[4];
-    int input_data;
-    int8_t codeword;
 
-    input_file_name = (char *) malloc(sizeof(char) * 1024);
+    original_audio_file = (char *) malloc(sizeof(char) * 1024);
+    a_law_compressed_file = (char *) malloc(sizeof(char) * 1024);
     output_file_name = (char *) malloc(sizeof(char) * 1024);
 
-    if (input_file_name == NULL) {
+    if (original_audio_file == NULL) {
         printf("Error in malloc\n");
         exit(1);
     }
 
     if (getcwd(current_directory, sizeof(current_directory)) != NULL) {
-        strcpy(input_file_name, current_directory);
+        strcpy(original_audio_file, current_directory);
         if (argc < 2) {
             printf("No input file specified!\n");
             exit(1);
         }
-        strcat(input_file_name, "/");
-        strcat(input_file_name, argv[1]);
+        strcat(original_audio_file, "/");
+        strcat(original_audio_file, argv[1]);
+
+        strcpy(a_law_compressed_file, original_audio_file);
+        a_law_compressed_file[strlen(a_law_compressed_file) - 4] = '\0';
+        strcat(a_law_compressed_file, "_tmp.wav");
     }
 
     strcpy(output_file_name, argv[1]);
     output_file_name[strlen(output_file_name) - 4] = '\0';
-    strcat(output_file_name, "_output.wav");
+    strcat(output_file_name, "_alaw_compressed.wav");
 
-    inputfile = fopen(input_file_name, "rb+");
+    inputfile = fopen(original_audio_file, "rb+");
     if (inputfile == NULL) {
+        printf("Error opening input file!\n");
+        exit(1);
+    }
+
+    inputDataFile = fopen(a_law_compressed_file, "rb+");
+    if (inputDataFile == NULL) {
         printf("Error opening input file!\n");
         exit(1);
     }
@@ -93,7 +96,6 @@ int main(int argc, char **argv) {
         printf("Error writing output file!\n");
         exit(1);
     }
-
 
     // Riff - does not change
     fread(wavHeaderStruct.riff, sizeof(wavHeaderStruct.riff), 1, inputfile);
@@ -135,7 +137,7 @@ int main(int argc, char **argv) {
 
     // Audio Format Type: 1=PCM; 6=ALAW; 7=MuLaw
     fread(wavHeaderStruct.format_type, sizeof(wavHeaderStruct.format_type), 1, inputfile);
-    byte_buffer_2[0] = 7;
+    byte_buffer_2[0] = 6;
     byte_buffer_2[1] = '\0';
     fwrite(&byte_buffer_2[0], 1, 1, outputfile);
     fwrite(&byte_buffer_2[1], 1, 1, outputfile);
@@ -197,98 +199,17 @@ int main(int argc, char **argv) {
     fwrite(&byte_buffer_4[1], 1, 1, outputfile);
     fwrite(&byte_buffer_4[0], 1, 1, outputfile);
 
-    while (fread(byte_buffer_2, 1, 2, inputfile) == 2) {
-        input_data = bytes_to_int16(byte_buffer_2);
-        codeword = u_law_encode(input_data);
-        fwrite(&codeword, 1, 1, outputfile);
+    fseek(inputDataFile, 44, 1);
+    while (fread(byte_buffer_2, 1, 2, inputDataFile) == 2) {
+        fwrite(&byte_buffer_2, 1, 2, outputfile);
     }
 
+    remove(a_law_compressed_file);
     fclose(inputfile);
+    fclose(inputDataFile);
     fclose(outputfile);
-    free(input_file_name);
+    free(original_audio_file);
+    free(a_law_compressed_file);
     free(output_file_name);
     return 0;
 }
-
-// HELPER FUNCTIONS
-int16_t bytes_to_int16(unsigned char *buffer) {
-    unsigned char bit_one = buffer[0];
-    unsigned char bit_two = buffer[1];
-    int16_t number = ((int) bit_two << 8) | (int) bit_one;
-    return number;
-}
-
-int8_t u_law_encode(int16_t number) {
-    uint16_t mask = 0x1000;
-    uint8_t sign = 0;
-    uint8_t position = 12;
-    uint8_t lsb = 0;
-    if (number < 0) {
-        number = -number;
-        sign = 0x80;
-    }
-    number += MULAW_BIAS;
-    if (number > MULAW_MAX) {
-        number = MULAW_MAX;
-    }
-    for (; ((number & mask) != mask && position >= 5); mask >>= 1, position--);
-    lsb = (number >> (position - 4)) & 0x0f;
-    return (~(sign | ((position - 5) << 4) | lsb));
-}
-
-
-/*
-char codeword_compression(unsigned int sample_magnitude,
-                          int sign) {
-    int chord, step;
-    int codeword_tmp;
-    if (sample_magnitude & (1 << 12)) {
-        chord = 0x7;
-        step = (sample_magnitude >> 8) & 0xF;
-        codeword_tmp = (sign << 7) | (chord << 4) | step;
-        return ((char) codeword_tmp);
-    }
-    if (sample_magnitude & (1 << 11)) {
-        chord = 0x6;
-        step = (sample_magnitude >> 7) & 0xF;
-        codeword_tmp = (sign << 7) | (chord << 4) | step;
-        return ((char) codeword_tmp);
-    }
-    if (sample_magnitude & (1 << 10)) {
-        chord = 0x5;
-        step = (sample_magnitude >> 6) & 0xF;
-        codeword_tmp = (sign << 7) | (chord << 4) | step;
-        return ((char) codeword_tmp);
-    }
-    if (sample_magnitude & (1 << 9)) {
-        chord = 0x4;
-        step = (sample_magnitude >> 5) & 0xF;
-        codeword_tmp = (sign << 7) | (chord << 4) | step;
-        return ((char) codeword_tmp);
-    }
-    if (sample_magnitude & (1 << 8)) {
-        chord = 0x3;
-        step = (sample_magnitude >> 4) & 0xF;
-        codeword_tmp = (sign << 7) | (chord << 4) | step;
-        return ((char) codeword_tmp);
-    }
-    if (sample_magnitude & (1 << 7)) {
-        chord = 0x2;
-        step = (sample_magnitude >> 3) & 0xF;
-        codeword_tmp = (sign << 7) | (chord << 4) | step;
-        return ((char) codeword_tmp);
-    }
-    if (sample_magnitude & (1 << 6)) {
-        chord = 0x1;
-        step = (sample_magnitude >> 2) & 0xF;
-        codeword_tmp = (sign << 7) | (chord << 4) | step;
-        return ((char) codeword_tmp);
-    }
-    if (sample_magnitude & (1 << 5)) {
-        chord = 0x0;
-        step = (sample_magnitude >> 1) & 0xF;
-        codeword_tmp = (sign << 7) | (chord << 4) | step;
-        return ((char) codeword_tmp);
-    }
-    return '\0';
-}*/
