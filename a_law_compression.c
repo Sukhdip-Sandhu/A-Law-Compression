@@ -29,7 +29,7 @@ char *output_file_name;
 // **********************************************************************
 int main(int argc, char **argv) {
     char current_directory[1024];
-    unsigned char byte_buffer_2[2];
+    unsigned char *byte_buffer_2;
     unsigned char byte_buffer_44[44];
     int16_t input_data;
     int8_t codeword;
@@ -52,6 +52,14 @@ int main(int argc, char **argv) {
 
     fread(byte_buffer_44, 44, 1, input_file);
     fwrite(byte_buffer_44, 44, 1, output_file);
+
+    unsigned int overall_size = byte_buffer_44[4]
+                                | (byte_buffer_44[5] << 8)
+                                | (byte_buffer_44[6] << 16)
+                                | (byte_buffer_44[7] << 24);
+
+    byte_buffer_2 = malloc(overall_size * sizeof(char));
+    fread(byte_buffer_2, overall_size, 1, input_file);
 
     while (fread(byte_buffer_2, 1, 2, input_file) == 2) {
         input_data = bytes_to_int16(byte_buffer_2);
