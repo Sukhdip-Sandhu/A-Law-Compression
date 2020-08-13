@@ -57,6 +57,8 @@ int main(int argc, char **argv) {
                                 | (file_header_buffer[6] << 16)
                                 | (file_header_buffer[7] << 24);
 
+    overall_size -= 36;
+
     file_data_buffer = malloc(overall_size * sizeof(char));
     fread(file_data_buffer, overall_size, 1, input_file);
 
