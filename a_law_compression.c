@@ -14,13 +14,13 @@
 // **********************************************************************
 int16_t bytes_to_int16(const unsigned char *buffer);
 
-int8_t a_law_encode(int16_t number);
+int8_t a_law_encode(int16_t sample);
 
 // **********************************************************************
 // GLOBAL VARIABLES
 // **********************************************************************
-FILE *inputfile;
-FILE *outputfile;
+FILE *input_file;
+FILE *output_file;
 char *input_file_name;
 char *output_file_name;
 
@@ -47,50 +47,52 @@ int main(int argc, char **argv) {
     output_file_name[strlen(output_file_name) - 4] = '\0';
     strcat(output_file_name, "_tmp.wav");
 
-    inputfile = fopen(input_file_name, "rb+");
-    outputfile = fopen(output_file_name, "wb");
+    input_file = fopen(input_file_name, "rb+");
+    output_file = fopen(output_file_name, "wb");
 
-    fread(byte_buffer_44, 44, 1, inputfile);
-    fwrite(byte_buffer_44, 44, 1, outputfile);
+    fread(byte_buffer_44, 44, 1, input_file);
+    fwrite(byte_buffer_44, 44, 1, output_file);
 
-    while (fread(byte_buffer_2, 1, 2, inputfile) == 2) {
+    while (fread(byte_buffer_2, 1, 2, input_file) == 2) {
         input_data = bytes_to_int16(byte_buffer_2);
         codeword = a_law_encode(input_data);
-        fwrite(&codeword, 1, 1, outputfile);
+        fwrite(&codeword, 1, 1, output_file);
     }
 
-    fclose(inputfile);
-    fclose(outputfile);
+    fclose(input_file);
+    fclose(output_file);
     free(input_file_name);
     free(output_file_name);
     return 0;
 }
 
+// **********************************************************************
 // HELPER FUNCTIONS
+// **********************************************************************
 int16_t bytes_to_int16(const unsigned char *buffer) {
     unsigned char bit_one = buffer[0];
     unsigned char bit_two = buffer[1];
     return bit_two << 8 | bit_one;
 }
 
-int8_t a_law_encode(int16_t number) {
+int8_t a_law_encode(int16_t sample) {
     uint16_t mask = 0x800;
     uint8_t sign = 0;
     uint8_t step = 0;
     uint8_t msb_position;
     uint8_t chord;
 
-    if (number < 0) {
-        number = -number;
+    if (sample < 0) {
+        sample = -sample;
         sign = 0x80;
     }
 
-    if (number > ALAW_MAX) {
-        number = ALAW_MAX;
+    if (sample > ALAW_MAX) {
+        sample = ALAW_MAX;
     }
 
     for (msb_position = 11; msb_position >= 5; msb_position--) {
-        if ((number & mask)) {
+        if ((sample & mask)) {
             break;
         } else {
             mask >>= 1;
@@ -98,9 +100,9 @@ int8_t a_law_encode(int16_t number) {
     }
 
     if (msb_position == 4) {
-        step = (number >> 1) & 0x0F;
+        step = (sample >> 1) & 0x0F;
     } else {
-        step = (number >> (msb_position - 4)) & 0x0F;
+        step = (sample >> (msb_position - 4)) & 0x0F;
     }
 
     chord = ((msb_position - 4) << 4);
