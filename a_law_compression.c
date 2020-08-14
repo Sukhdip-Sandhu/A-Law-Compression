@@ -15,21 +15,16 @@
 
 int8_t a_law_encode(int16_t sample);
 
-// **********************************************************************
-// GLOBAL VARIABLES
-// **********************************************************************
-FILE *input_file;
-FILE *output_file;
-char *input_file_name;
-char *output_file_name;
 
 // **********************************************************************
 // MAIN FUNCTION
 // **********************************************************************
 int main(int argc, char **argv) {
+    FILE *input_file, *output_file;
     char current_directory[1024];
-    unsigned char *file_data_buffer;
+    char *input_file_name, *output_file_name;
     unsigned char file_header_buffer[44];
+    unsigned char *inputfile_data_buffer, *output_file_data_buffer;
     int16_t input_data;
     int8_t codeword;
 
@@ -59,27 +54,31 @@ int main(int argc, char **argv) {
 
     overall_size -= 36;
 
-    file_data_buffer = malloc(overall_size * sizeof(char));
-    fread(file_data_buffer, overall_size, 1, input_file);
+    inputfile_data_buffer = malloc(overall_size * sizeof(char));
+    output_file_data_buffer = malloc((overall_size / 2) * sizeof(char));
+
+    fread(inputfile_data_buffer, overall_size, 1, input_file);
 
     for (int i = 0; i < overall_size; i = i + 2) {
-        input_data = file_data_buffer[i + 1] << 8 | file_data_buffer[i];
+        input_data = inputfile_data_buffer[i] | inputfile_data_buffer[i + 1] << 8;
         codeword = a_law_encode(input_data);
-        fwrite(&codeword, 1, 1, output_file);
+        output_file_data_buffer[i / 2] = codeword;
     }
+
+    fwrite(output_file_data_buffer, (overall_size / 2), 1, output_file);
 
     fclose(input_file);
     fclose(output_file);
     free(input_file_name);
     free(output_file_name);
-    free(file_data_buffer);
+    free(inputfile_data_buffer);
+    free(output_file_data_buffer);
     return 0;
 }
 
 // **********************************************************************
 // HELPER FUNCTIONS
 // **********************************************************************
-
 int8_t a_law_encode(int16_t sample) {
     uint16_t mask = 0x800;
     uint8_t sign = 0;
