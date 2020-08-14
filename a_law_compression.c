@@ -59,7 +59,8 @@ int main(int argc, char **argv) {
 
     fread(inputfile_data_buffer, overall_size, 1, input_file);
 
-    for (int i = 0; i < overall_size; i = i + 2) {
+    int i;
+    for (i = 0; i < overall_size; i = i + 2) {
         input_data = inputfile_data_buffer[i] | inputfile_data_buffer[i + 1] << 8;
         codeword = a_law_encode(input_data);
         output_file_data_buffer[i / 2] = codeword;
