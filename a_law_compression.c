@@ -9,7 +9,8 @@
 // **********************************************************************
 #define ALAW_MAX 0xFFF
 
-#define bytes_to_int16(byte_one, byte_two) byte_one | byte_two << 8;
+#define bytes_to_int16(byte_one, byte_two) byte_one | byte_two << 8
+
 // **********************************************************************
 // FUNCTION DECLARATIONS
 // **********************************************************************
@@ -80,7 +81,6 @@ int main(int argc, char **argv) {
 // HELPER FUNCTIONS
 // **********************************************************************
 int8_t a_law_encode(int16_t sample) {
-    uint16_t mask = 0x800;
     uint8_t sign = 0;
     uint8_t step = 0;
     uint8_t msb_position;
@@ -95,15 +95,10 @@ int8_t a_law_encode(int16_t sample) {
         sample = ALAW_MAX;
     }
 
-    for (msb_position = 11; msb_position >= 5; msb_position--) {
-        if ((sample & mask)) {
-            break;
-        } else {
-            mask >>= 1;
-        }
-    }
+    msb_position = 31 - __builtin_clz(sample);
 
-    if (msb_position == 4) {
+    if (msb_position <= 4) {
+        msb_position = 4;
         step = (sample >> 1) & 0x0F;
     } else {
         step = (sample >> (msb_position - 4)) & 0x0F;
