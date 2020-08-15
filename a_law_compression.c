@@ -12,25 +12,19 @@
 // **********************************************************************
 // FUNCTION DECLARATIONS
 // **********************************************************************
-int16_t bytes_to_int16(const unsigned char *buffer);
-
 int8_t a_law_encode(int16_t sample);
 
-// **********************************************************************
-// GLOBAL VARIABLES
-// **********************************************************************
-FILE *input_file;
-FILE *output_file;
-char *input_file_name;
-char *output_file_name;
+int16_t bytes_to_int16(const unsigned char *buffer, int i);
 
 // **********************************************************************
 // MAIN FUNCTION
 // **********************************************************************
 int main(int argc, char **argv) {
+    FILE *input_file, *output_file;
     char current_directory[1024];
-    unsigned char byte_buffer_2[2];
-    unsigned char byte_buffer_44[44];
+    char *input_file_name, *output_file_name;
+    unsigned char file_header_buffer[44];
+    unsigned char *inputfile_data_buffer, *output_file_data_buffer;
     int16_t input_data;
     int8_t codeword;
 
@@ -50,29 +44,46 @@ int main(int argc, char **argv) {
     input_file = fopen(input_file_name, "rb+");
     output_file = fopen(output_file_name, "wb");
 
-    fread(byte_buffer_44, 44, 1, input_file);
-    fwrite(byte_buffer_44, 44, 1, output_file);
+    fread(file_header_buffer, 44, 1, input_file);
+    fwrite(file_header_buffer, 44, 1, output_file);
 
-    while (fread(byte_buffer_2, 1, 2, input_file) == 2) {
-        input_data = bytes_to_int16(byte_buffer_2);
+    unsigned int overall_size = file_header_buffer[4]
+                                | (file_header_buffer[5] << 8)
+                                | (file_header_buffer[6] << 16)
+                                | (file_header_buffer[7] << 24);
+
+    overall_size -= 36;
+
+    inputfile_data_buffer = malloc(overall_size * sizeof(char));
+    output_file_data_buffer = malloc((overall_size / 2) * sizeof(char));
+
+    fread(inputfile_data_buffer, overall_size, 1, input_file);
+
+    int i;
+    for (i = 0; i < overall_size; i = i + 2) {
+        input_data = bytes_to_int16(inputfile_data_buffer, i);
         codeword = a_law_encode(input_data);
-        fwrite(&codeword, 1, 1, output_file);
+        output_file_data_buffer[i / 2] = codeword;
     }
+
+    fwrite(output_file_data_buffer, (overall_size / 2), 1, output_file);
 
     fclose(input_file);
     fclose(output_file);
     free(input_file_name);
     free(output_file_name);
+    free(inputfile_data_buffer);
+    free(output_file_data_buffer);
     return 0;
 }
 
 // **********************************************************************
 // HELPER FUNCTIONS
 // **********************************************************************
-int16_t bytes_to_int16(const unsigned char *buffer) {
-    unsigned char bit_one = buffer[0];
-    unsigned char bit_two = buffer[1];
-    return bit_two << 8 | bit_one;
+int16_t bytes_to_int16(const unsigned char *buffer, int i) {
+    unsigned char bit_one = buffer[i];
+    unsigned char bit_two = buffer[i + 1];
+    return bit_one | bit_two << 8;
 }
 
 int8_t a_law_encode(int16_t sample) {
