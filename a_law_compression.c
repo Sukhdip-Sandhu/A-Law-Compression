@@ -26,7 +26,13 @@ int main(int argc, char **argv) {
     unsigned char file_header_buffer[44];
     unsigned char *inputfile_data_buffer, *output_file_data_buffer;
     int16_t input_data;
+    int16_t input_data2;
+    int16_t input_data3;
+    int16_t input_data4;
     int8_t codeword;
+    int8_t codeword2;
+    int8_t codeword3;
+    int8_t codeword4;
 
     input_file_name = (char *) malloc(sizeof(char) * 1024);
     output_file_name = (char *) malloc(sizeof(char) * 1024);
@@ -60,10 +66,19 @@ int main(int argc, char **argv) {
     fread(inputfile_data_buffer, overall_size, 1, input_file);
 
     int i;
-    for (i = 0; i < overall_size; i = i + 2) {
+    for (i = 0; i < overall_size; i = i + 8) {
         input_data = bytes_to_int16(inputfile_data_buffer[i], inputfile_data_buffer[i + 1]);
+        input_data2 = bytes_to_int16(inputfile_data_buffer[i + 2], inputfile_data_buffer[i + 3]);
+        input_data3 = bytes_to_int16(inputfile_data_buffer[i + 4], inputfile_data_buffer[i + 5]);
+        input_data4 = bytes_to_int16(inputfile_data_buffer[i + 6], inputfile_data_buffer[i + 7]);
         codeword = a_law_encode(input_data);
+        codeword2 = a_law_encode(input_data2);
+        codeword3 = a_law_encode(input_data3);
+        codeword4 = a_law_encode(input_data4);
         output_file_data_buffer[i / 2] = codeword;
+        output_file_data_buffer[(i / 2) + 1] = codeword2;
+        output_file_data_buffer[(i / 2) + 2] = codeword3;
+        output_file_data_buffer[(i / 2) + 3] = codeword4;
     }
 
     fwrite(output_file_data_buffer, (overall_size / 2), 1, output_file);
