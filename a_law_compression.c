@@ -9,7 +9,7 @@
 // **********************************************************************
 #define ALAW_MAX 0xFFF
 
-#define bytes_to_int16(bit_one, bit_two) bit_one | bit_two << 8;
+#define bytes_to_int16(byte_one, byte_two) byte_one | byte_two << 8;
 // **********************************************************************
 // FUNCTION DECLARATIONS
 // **********************************************************************
