@@ -31,6 +31,14 @@ char *recovered_file_name;
 // **********************************************************************
 // MAIN FUNCTION
 // **********************************************************************
+int16_t compute_diff(int16_t first, int16_t second){
+	int16_t result=first-second;
+	if(result>=0){
+		return result;
+	}
+	return -result;
+}
+
 int main(int argc, char **argv) {
     char current_directory[1024];
     unsigned char byte_buffer_2[2];
@@ -38,6 +46,8 @@ int main(int argc, char **argv) {
     int16_t input_data;
     int8_t codeword;
     int16_t recovered_data;
+    int distortion=0;
+    int number_of_codeword=0;
 
     input_file_name = (char *) malloc(sizeof(char) * 1024);
     output_file_name = (char *) malloc(sizeof(char) * 1024);
@@ -71,6 +81,10 @@ int main(int argc, char **argv) {
         fwrite(&codeword, 1, 1, output_file);
         recovered_data=a_law_decode(codeword);
         fwrite(&recovered_data, 1, 2, recovered_file);
+        int16_t diff=compute_diff(recovered_data, input_data);
+        printf("Original: %7d\tRecovered: %7d\tDifference: %d\n", input_data, recovered_data, diff);
+        distortion=distortion+diff;
+        number_of_codeword++;
     }
 
     fclose(input_file);
@@ -79,6 +93,7 @@ int main(int argc, char **argv) {
     free(input_file_name);
     free(output_file_name);
     free(recovered_file_name);
+    printf("Overall Distortion: %d\nTotal number of codeword compressed: %d\nAverage distortion for each codeword: %d", distortion, number_of_codeword, distortion/number_of_codeword);
     return 0;
 }
 
