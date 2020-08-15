@@ -9,12 +9,11 @@
 // **********************************************************************
 #define ALAW_MAX 0xFFF
 
+#define bytes_to_int16(byte_one, byte_two) byte_one | byte_two << 8;
 // **********************************************************************
 // FUNCTION DECLARATIONS
 // **********************************************************************
 int8_t a_law_encode(int16_t sample);
-
-int16_t bytes_to_int16(const unsigned char *buffer, int i);
 
 // **********************************************************************
 // MAIN FUNCTION
@@ -61,7 +60,7 @@ int main(int argc, char **argv) {
 
     int i;
     for (i = 0; i < overall_size; i = i + 2) {
-        input_data = bytes_to_int16(inputfile_data_buffer, i);
+        input_data = bytes_to_int16(inputfile_data_buffer[i], inputfile_data_buffer[i + 1]);
         codeword = a_law_encode(input_data);
         output_file_data_buffer[i / 2] = codeword;
     }
@@ -80,12 +79,6 @@ int main(int argc, char **argv) {
 // **********************************************************************
 // HELPER FUNCTIONS
 // **********************************************************************
-int16_t bytes_to_int16(const unsigned char *buffer, int i) {
-    unsigned char bit_one = buffer[i];
-    unsigned char bit_two = buffer[i + 1];
-    return bit_one | bit_two << 8;
-}
-
 int8_t a_law_encode(int16_t sample) {
     uint16_t mask = 0x800;
     uint8_t sign = 0;
